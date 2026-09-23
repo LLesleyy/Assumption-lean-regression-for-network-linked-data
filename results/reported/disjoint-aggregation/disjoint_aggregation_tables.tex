@@ -1,0 +1,53 @@
+% Requires booktabs. Fixed disjoint subsets; checked Monte Carlo results.
+\begin{table}[tbp]
+\centering
+\small
+\caption{Coverage and interval width for disjoint-subset aggregation with a local two-star covariate.}
+\label{tab:disjoint-aggregation-two-star}
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+$m$ & $K$ & $\delta=-0.55$ & $-0.40$ & $-0.30$ & $-0.25$ \\
+\midrule
+25 & 1 & 0.338 (6.57) & 0.730 (4.32) & 0.830 (3.06) & 0.838 (2.49) \\
+ & 5 & 0.005 (3.03) & 0.308 (1.96) & 0.623 (1.39) & 0.710 (1.14) \\
+ & 10 & 0.000 (2.16) & 0.115 (1.39) & 0.450 (0.98) & 0.573 (0.81) \\
+\addlinespace
+50 & 1 & 0.120 (4.99) & 0.585 (3.19) & 0.788 (2.24) & 0.830 (1.83) \\
+ & 5 & 0.000 (2.28) & 0.103 (1.46) & 0.453 (1.02) & 0.578 (0.84) \\
+ & 10 & 0.000 (1.62) & 0.005 (1.04) & 0.245 (0.72) & 0.400 (0.59) \\
+\addlinespace
+100 & 1 & 0.005 (3.67) & 0.360 (2.35) & 0.700 (1.64) & 0.778 (1.33) \\
+ & 5 & 0.000 (1.68) & 0.003 (1.06) & 0.233 (0.73) & 0.393 (0.60) \\
+ & 10 & 0.000 (1.19) & 0.000 (0.75) & 0.110 (0.52) & 0.263 (0.43) \\
+\bottomrule
+\end{tabular}
+\par\smallskip
+{\footnotesize Entries are coverage of nominal 95\% intervals (mean width); $n=6000$, 400 replications per regime.}
+\end{table}
+
+\begin{table}[tbp]
+\centering
+\small
+\caption{Coverage and interval width for disjoint-subset aggregation with a local triangle covariate.}
+\label{tab:disjoint-aggregation-triangle}
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+$m$ & $K$ & $\delta=-0.55$ & $-0.40$ & $-0.30$ & $-0.25$ \\
+\midrule
+25 & 1 & 0.080 (7.20) & 0.648 (4.56) & 0.830 (3.19) & 0.843 (2.57) \\
+ & 5 & 0.000 (3.30) & 0.210 (2.08) & 0.583 (1.45) & 0.650 (1.18) \\
+ & 10 & 0.000 (2.34) & 0.055 (1.48) & 0.390 (1.02) & 0.530 (0.83) \\
+\addlinespace
+50 & 1 & 0.005 (5.34) & 0.513 (3.39) & 0.765 (2.32) & 0.813 (1.88) \\
+ & 5 & 0.000 (2.40) & 0.040 (1.55) & 0.383 (1.06) & 0.513 (0.86) \\
+ & 10 & 0.000 (1.71) & 0.003 (1.10) & 0.178 (0.75) & 0.343 (0.61) \\
+\addlinespace
+100 & 1 & 0.000 (3.89) & 0.250 (2.48) & 0.660 (1.70) & 0.725 (1.37) \\
+ & 5 & 0.000 (1.75) & 0.003 (1.13) & 0.178 (0.76) & 0.350 (0.62) \\
+ & 10 & 0.000 (1.24) & 0.000 (0.80) & 0.068 (0.54) & 0.225 (0.44) \\
+\bottomrule
+\end{tabular}
+\par\smallskip
+{\footnotesize Entries are coverage of nominal 95\% intervals (mean width); $n=6000$, 400 replications per regime.}
+\end{table}
+

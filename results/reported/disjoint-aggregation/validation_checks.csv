@@ -1,0 +1,5 @@
+"delta","replications","coefficient_records","cells","failures","disjointness_verified","aggregate_variance_reconstructed","summaries_recomputed","code_hashes_match","max_reference_fit_error"
+-0.55,400,57600,144,0,TRUE,TRUE,TRUE,TRUE,4.85611550971043e-13
+-0.4,400,57600,144,0,TRUE,TRUE,TRUE,TRUE,4.85611550971043e-13
+-0.3,400,57600,144,0,TRUE,TRUE,TRUE,TRUE,4.85611550971043e-13
+-0.25,400,57600,144,0,TRUE,TRUE,TRUE,TRUE,4.85611550971043e-13

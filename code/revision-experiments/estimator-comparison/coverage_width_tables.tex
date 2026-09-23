@@ -1,0 +1,68 @@
+% Requires \usepackage{booktabs}.
+% Each entry reports empirical coverage (average confidence-interval width).
+
+\begin{table}[t]
+\centering
+\caption{Coverage and width for regression with a local two-star covariate. Each entry reports the empirical coverage of a 95\% confidence interval, with its average width in parentheses. The network size is $n=6000$, and results are based on 400 Monte Carlo replications.}
+\label{tab:twostar-downsampling-coverage-width}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llcccc}
+\toprule
+&& \multicolumn{4}{c}{Sparsity exponent $\delta$ in $\rho_n=n^\delta$} \\
+\cmidrule(lr){3-6}
+Estimator & $m$ & $-0.55$ & $-0.40$ & $-0.30$ & $-0.25$ \\
+Mean degree && $50.1$ & $184.8$ & $441.0$ & $681.3$ \\
+\midrule
+Down-sampled OLS & 25   & .300 (6.55) & .708 (4.17) & .807 (3.01) & .858 (2.54) \\
+                 & 40   & .152 (5.48) & .605 (3.44) & .795 (2.43) & .855 (2.03) \\
+                 & 65   & .052 (4.53) & .487 (2.82) & .757 (1.97) & .833 (1.63) \\
+                 & 100  & .010 (3.76) & .350 (2.33) & .690 (1.61) & .770 (1.33) \\
+                 & 160  & .000 (3.04) & .190 (1.87) & .552 (1.29) & .693 (1.06) \\
+                 & 250  & .000 (2.48) & .080 (1.51) & .417 (1.04) & .568 (0.86) \\
+                 & 400  & .000 (1.98) & .010 (1.20) & .265 (0.82) & .445 (0.68) \\
+                 & 650  & .000 (1.55) & .003 (0.95) & .152 (0.65) & .310 (0.53) \\
+                 & 1000 & .000 (1.25) & .000 (0.77) & .085 (0.52) & .263 (0.43) \\
+\midrule
+Full OLS           & 6000 & .000 (1.09) & .000 (0.96) & .295 (0.91) & .670 (0.90) \\
+Full corrected OLS & 6000 & .990 (1.54) & .975 (1.00) & .963 (0.92) & .965 (0.91) \\
+\bottomrule
+\end{tabular}
+\begin{minipage}{0.96\linewidth}
+\footnotesize\vspace{2pt}
+\textit{Note.} The full-sample intervals use the structural multiplier bootstrap. The down-sampled intervals use the i.i.d. Gaussian multiplier, with the network covariate constructed from the full graph before selecting the $m$ regression observations. The target network coefficient is $20$.
+\end{minipage}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Coverage and width for regression with a local triangle covariate. Each entry reports the empirical coverage of a 95\% confidence interval, with its average width in parentheses. The network size is $n=6000$, and results are based on 400 Monte Carlo replications.}
+\label{tab:triangle-downsampling-coverage-width}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llcccc}
+\toprule
+&& \multicolumn{4}{c}{Sparsity exponent $\delta$ in $\rho_n=n^\delta$} \\
+\cmidrule(lr){3-6}
+Estimator & $m$ & $-0.55$ & $-0.40$ & $-0.30$ & $-0.25$ \\
+Mean degree && $50.1$ & $184.8$ & $441.0$ & $681.3$ \\
+\midrule
+Down-sampled OLS & 25   & .073 (7.19) & .673 (4.42) & .763 (3.13) & .848 (2.60) \\
+                 & 40   & .008 (5.80) & .535 (3.64) & .778 (2.54) & .855 (2.09) \\
+                 & 65   & .000 (4.67) & .398 (3.00) & .728 (2.06) & .805 (1.68) \\
+                 & 100  & .000 (3.88) & .240 (2.47) & .625 (1.68) & .740 (1.37) \\
+                 & 160  & .000 (3.13) & .095 (1.99) & .487 (1.35) & .627 (1.09) \\
+                 & 250  & .000 (2.53) & .025 (1.61) & .362 (1.08) & .507 (0.88) \\
+                 & 400  & .000 (2.01) & .000 (1.28) & .195 (0.86) & .378 (0.70) \\
+                 & 650  & .000 (1.58) & .000 (1.01) & .105 (0.67) & .278 (0.55) \\
+                 & 1000 & .000 (1.28) & .000 (0.82) & .060 (0.54) & .220 (0.44) \\
+\midrule
+Full OLS           & 6000 & .000 (1.39) & .000 (1.13) & .313 (1.03) & .723 (1.00) \\
+Full corrected OLS & 6000 & 1.000 (2.95) & .965 (1.15) & .953 (1.02) & .940 (0.99) \\
+\bottomrule
+\end{tabular}
+\begin{minipage}{0.96\linewidth}
+\footnotesize\vspace{2pt}
+\textit{Note.} The full-sample intervals use the structural multiplier bootstrap. The down-sampled intervals use the i.i.d. Gaussian multiplier, with the network covariate constructed from the full graph before selecting the $m$ regression observations. The target network coefficient is $20$.
+\end{minipage}
+\end{table}

@@ -1,0 +1,21 @@
+% Requires \usepackage{booktabs}. Companion table; preserves the width results.
+\begin{table}[htbp]
+\centering
+\small
+\caption{\textit{Average widths of 95\% bootstrap confidence intervals in a continuous GRDPG}}
+\label{tab:strict-grdpg-dense-width}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lcc}
+\toprule
+Setting & Mean width ($\beta_1$) & Mean width ($\beta_2$) \\
+\midrule
+Strong network effect & 0.0783 & 0.0785 \\
+Weak network effect & 0.0754 & 0.0754 \\
+No network effect & 0.0752 & 0.0751 \\
+\bottomrule
+\end{tabular}
+\par\smallskip
+\begin{minipage}{0.98\linewidth}\footnotesize
+Entries are average widths of 95\% bootstrap confidence intervals for the conventional covariate coefficients $(\beta_1,\beta_2)=(1,2)$ over 400 independent repetitions per setting. Here $n=3000$, $\rho_n=n^{-0.3}$, and each repetition uses 2000 multiplier bootstrap draws. The adjacency spectral embedding is normalized using known $\rho_n$. Coverage and network-effect testing results are reported in Table~\ref{tab:strict-grdpg-dense}.
+\end{minipage}
+\end{table}

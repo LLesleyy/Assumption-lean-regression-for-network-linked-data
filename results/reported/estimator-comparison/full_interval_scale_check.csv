@@ -1,0 +1,17 @@
+"motif","delta","method","empirical_sd.sd","empirical_sd.mean","mean_bootstrap_se.sd","mean_bootstrap_se.mean"
+"triangle",-0.55,"full_corrected", 0.4504396,20.0436358,0.030092192,0.755773126
+"two_star",-0.55,"full_corrected", 0.2917079,20.0173588,0.012563566,0.395598153
+"triangle",-0.40,"full_corrected", 0.2570146,20.0148907,0.007512809,0.295586355
+"two_star",-0.40,"full_corrected", 0.2292665,19.9961153,0.006426644,0.256761820
+"triangle",-0.30,"full_corrected", 0.2422684,20.0123396,0.006298513,0.261591652
+"two_star",-0.30,"full_corrected", 0.2230279,19.9957483,0.005839924,0.236531594
+"triangle",-0.25,"full_corrected", 0.2394267,20.0078414,0.006323982,0.254794510
+"two_star",-0.25,"full_corrected", 0.2210062,19.9925396,0.005610953,0.232195353
+"triangle",-0.55,"full_uncorrected", 0.1971495,12.1556548,0.009526095,0.356626760
+"two_star",-0.55,"full_uncorrected", 0.1772236,15.4634152,0.007301148,0.279854644
+"triangle",-0.40,"full_uncorrected", 0.2212026,18.2361128,0.007112945,0.290371000
+"two_star",-0.40,"full_uncorrected", 0.2004041,18.5652329,0.006036778,0.245316101
+"triangle",-0.30,"full_uncorrected", 0.2290821,19.3005749,0.006277229,0.264944993
+"two_star",-0.30,"full_uncorrected", 0.2116741,19.4035765,0.005769381,0.234258184
+"triangle",-0.25,"full_uncorrected", 0.2314479,19.5668996,0.006312742,0.257723064
+"two_star",-0.25,"full_uncorrected", 0.2141008,19.6257032,0.005588059,0.231175363

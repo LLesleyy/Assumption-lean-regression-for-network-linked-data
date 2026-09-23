@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the manuscript and this repository."
+title: "Code for Assumption-lean inference for network-linked data"
+type: software
+authors:
+  - family-names: Li
+    given-names: Wei
+  - family-names: Chakraborty
+    given-names: Nilanjan
+  - family-names: Lunde
+    given-names: Robert
+repository-code: "https://github.com/LLesleyy/Assumption-lean-regression-for-network-linked-data"
+preferred-citation:
+  type: article
+  title: "Assumption-lean inference for network-linked data"
+  authors:
+    - family-names: Li
+      given-names: Wei
+    - family-names: Chakraborty
+      given-names: Nilanjan
+    - family-names: Lunde
+      given-names: Robert
+  year: 2026
+

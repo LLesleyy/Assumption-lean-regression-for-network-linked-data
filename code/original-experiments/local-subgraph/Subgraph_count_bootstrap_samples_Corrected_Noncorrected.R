@@ -1,0 +1,457 @@
+
+# necessary libraries
+library(methods)
+library(Rcpp)
+library(RcppArmadillo)
+library(pracma)
+library(igraph)
+library(mvtnorm)
+library(Matrix)
+library(combinat)
+
+# a unified framework of bootstrap for corrected and non-corrected OLS together.
+# leverage the same bootstrap scheme.
+
+setClass("graphon",representation(w_function="character",nu_seq = "function"))
+create_simulation_function =  function(x,return_P_mat =FALSE) UseMethod("create_simulation_function")
+
+create_simulation_function.graphon = function(graphon,return_P_mat =FALSE) {
+  
+  cppFunction( 'arma::mat my_function_1( int n, double nu) {
+               arma::mat A_mat(n,n,arma::fill::zeros);
+               NumericVector latent_positions = runif(n,0,1);
+               for (int ii = 0; ii < n; ii++)
+               {
+               for(int jj = ii+1; jj< n; jj++) 
+               {
+               double P_temp = nu * w_function(latent_positions[ii],latent_positions[jj]);
+               A_mat(ii,jj) =  R::rbinom(1,P_temp);
+               }
+               }
+               A_mat = arma::symmatu(A_mat);
+               return(A_mat);
+}
+',depends = "RcppArmadillo", includes = graphon@w_function)
+  
+  cppFunction( 'List my_function_2( int n, double nu) {
+               arma::mat A_mat(n,n,arma::fill::zeros);
+               arma::mat P_mat(n,n,arma::fill::zeros);
+               NumericVector latent_positions = runif(n,0,1);
+               for (int ii = 0; ii < n; ii++)
+               {
+               for(int jj = ii+1; jj< n; jj++) 
+               {
+               double P_temp = nu * w_function(latent_positions[ii],latent_positions[jj]);
+               A_mat(ii,jj) =  R::rbinom(1,P_temp);
+               P_mat(ii,jj) = P_temp;
+               }
+               }
+               A_mat = arma::symmatu(A_mat);
+               P_mat = arma::symmatu(P_mat);
+               List ret;
+               ret["A_mat"] = A_mat;
+               ret["P_mat"] = P_mat;
+               ret["latent_positions"] = latent_positions;
+               return ret;
+}
+',depends = "RcppArmadillo", includes = graphon@w_function) 
+  
+  
+  if(return_P_mat){  
+    output = function(n) {
+      return( my_function_2(n=n,nu=graphon@nu_seq(n)))
+    }
+    return(output)
+  }
+  else{
+    output = function(n) {
+      return( my_function_1(n=n,nu=graphon@nu_seq(n)))
+      
+      return(output)
+    }
+  }
+}
+
+# graph kernel
+graphon.22 = 'double w_function(double u, double v) {
+return(0.5/0.5*(u+v));
+}'
+
+w_function.22 <- function(u, v) {
+  return(0.5/0.5*(u+v))
+}
+
+
+# define f(xi) function.
+f_xi_func.22_tri <- function(xi) {
+  integrate_function <- function(u, v) {
+    return(w_function.22(xi, u) * w_function.22(u, v)* w_function.22(v, xi))
+  }
+  as.numeric(integral2(integrate_function, 0, 1, 0, 1)$Q)
+}
+
+f_xi_func.22_ts <- function(xi) {
+  integrate_function <- function(u, v) {
+    return(w_function.22(xi, u) * w_function.22(xi, v))
+  }
+  as.numeric(integral2(integrate_function, 0, 1, 0, 1)$Q)
+}
+
+#############################
+# pre-computation functions. #
+#############################
+
+# 1. function for searching all the non-centered two star (more efficient version).
+weighted_non_rooted_two_star_count <- function(A, y, x1, x2) {
+  # Convert A to sparse matrix
+  A_sparse <- Matrix(A, sparse = TRUE)
+  
+  # Calculate degrees and degrees - 1
+  degrees <- rowSums(A_sparse)
+  degrees_minus_1 <- degrees - 1
+  
+  # Pre-compute weighted adjacency matrices
+  weighted_A_y <- A_sparse %*% Diagonal(x = y)
+  weighted_A_x1 <- A_sparse %*% Diagonal(x = x1)
+  weighted_A_x2 <- A_sparse %*% Diagonal(x = x2)
+  
+  # Compute weighted counts using matrix-vector multiplications
+  scaling_matrix <- matrix(degrees_minus_1, nrow = length(y), ncol = length(y), byrow = TRUE)
+  weighted_counts_yz <- rowSums(weighted_A_y * scaling_matrix)
+  weighted_counts_x1z <- rowSums(weighted_A_x1 * scaling_matrix)
+  weighted_counts_x2z <- rowSums(weighted_A_x2 * scaling_matrix)
+  
+  return(list(weighted_counts_yz = weighted_counts_yz,
+              weighted_counts_x1z = weighted_counts_x1z,
+              weighted_counts_x2z = weighted_counts_x2z))
+}
+
+# 2. function for searching all the non-centered wheel (more efficient version).
+find_size_4_non_rooted_wheels_count_sparse <- function(A) {
+  # Convert A to a sparse matrix
+  A_sparse <- Matrix(A, sparse = TRUE)
+  
+  # Calculate degrees of all nodes
+  degrees <- rowSums(A_sparse)
+  
+  # Pre-compute valid combinations
+  valid_combinations <- ifelse((degrees - 1) >= 3, choose(degrees - 1, 3), 0)
+  
+  # Compute counts using matrix-vector multiplication
+  counts2 <- A_sparse %*% valid_combinations
+  
+  return(as.numeric(counts2))
+}
+
+########################
+# simulation settings. #
+########################
+
+sparsity_levels<-c(-0.75,-0.7,-0.6,-0.4,-0.3,-0.25);
+
+outer_repetitions <- 200  # Number of outer repetitions
+bootstrap.size <- 2000    # Number of bootstrap iterations
+graphon.size<-4500;
+
+# configuration parameters for the simulation study.
+# nu<-graphon.size^(sparsity[k]);
+r<-3;
+# high SNR.
+beta0<-1;beta1<-20;beta2<-3;beta3<-2;
+
+####################
+# Initialization. #
+####################
+
+all_bootstrap_samples <- list()
+all_bootstrap_samples_non_corr <- list()
+all_beta_estimates_corr <- list()
+all_beta_estimates_non_corr <- list()
+
+all_bootstrap_rho <- list()
+all_estimated_rho <- list()
+
+all_bootstrap_z2_corr <- list()
+all_estimated_z2_corr <- list()
+
+all_bootstrap_z2_non_corr <- list()
+all_estimated_z2_non_corr <- list()
+
+bootstraped_beta_linear_multiplier<-matrix(0,ncol = 4, nrow=bootstrap.size);
+bootstraped_beta_linear_multiplier_non_corr<-matrix(0,ncol = 4, nrow=bootstrap.size);
+
+# store the bootstrapped statistics, overall 13 statistics involved to calculate the beta vector.
+bootstraped_y<-vector( "numeric" , bootstrap.size);
+bootstraped_yx1<-vector( "numeric" , bootstrap.size);
+bootstraped_yx2<-vector( "numeric" , bootstrap.size);
+bootstraped_yz<-vector( "numeric" , bootstrap.size);
+
+bootstraped_z2<-vector( "numeric" , bootstrap.size);
+bootstraped_z2_non_corr<-vector( "numeric" , bootstrap.size);
+
+bootstraped_x1_2nd<-vector( "numeric" , bootstrap.size);
+bootstraped_x2_2nd<-vector( "numeric" , bootstrap.size);
+
+bootstraped_z<-vector( "numeric" , bootstrap.size);
+bootstraped_x1<-vector( "numeric" , bootstrap.size);
+bootstraped_x2<-vector( "numeric" , bootstrap.size);
+
+bootstraped_x1x2<-vector( "numeric" , bootstrap.size);
+bootstraped_x1z<-vector( "numeric" , bootstrap.size);
+bootstraped_x2z<-vector( "numeric" , bootstrap.size);
+
+bootstraped_nu<-vector( "numeric" , bootstrap.size);
+
+# precomputation quantities.
+g1_hat_yz <- vector( "numeric" , graphon.size)
+g1_hat_x1z <- vector( "numeric" , graphon.size)
+g1_hat_x2z <- vector( "numeric" , graphon.size)
+g1_hat_z <- vector( "numeric" , graphon.size)
+
+# add an additional part for pre-computation of rho_n.
+g1_hat_nu <- vector( "numeric" , graphon.size)
+g1_hat_z2 <- vector( "numeric" , graphon.size)
+
+
+##################################
+# repetition of bootstrap starts #
+##################################
+
+for (k in seq_along(sparsity_levels)) {
+  
+  current_sparsity <- sparsity_levels[k]
+  cat("==== Starting simulation for sparsity =", current_sparsity, "====\n")
+  # Now use `current_sparsity` in place of `sparsity[k]`
+  nu <- graphon.size ^ current_sparsity
+  
+  # estimated rho_n is used in this pipeline.
+  for (outer in 1:outer_repetitions) {
+    
+    cat("Starting repetition", outer, "of", outer_repetitions, "under sparsity case",k, "\n")
+    
+    ## observed graph
+    my_graphon_new <- new("graphon", w_function = graphon.22, nu_seq = function(x) return(x^current_sparsity))
+    #my_graphon_new=new("graphon",w_function = graphon.22,nu_seq=function(x)return(x^(sparsity[k])))
+    my_graphon_simulate = create_simulation_function(my_graphon_new,return_P_mat = TRUE)
+    sample_i<-my_graphon_simulate(graphon.size) 
+  
+    A_mat<-sample_i[['A_mat']]
+    di=colSums(A_mat)
+    P_mat<-sample_i[['P_mat']]
+    latent_positions<-sample_i[['latent_positions']]
+    
+    # 1. Calculate f(xi) based on latent positions
+    f_xi_ts <- sapply(latent_positions, f_xi_func.22_ts)
+    
+    # 2. calculate zi_hat based on adjacency matrix.
+    nu_obv<-sum(A_mat)/(2*choose(graphon.size,2))
+    rooted_ts<-choose(di,2)
+    rooted_ts.density <- rooted_ts/(nu_obv^2*choose(graphon.size-1,r-1))
+    #rooted_ts.density <- rooted_ts/(nu^2*choose(graphon.size-1,r-1))
+    
+    # 3. generating independent y.
+    X_vec = rmvnorm(graphon.size,mean=c(1,3), sigma = matrix(c(1,0.6,0.6,4),nrow=2,ncol=2,byrow=T))
+    beta_vec=matrix(c(beta2,beta3),ncol =1)
+    error<-rnorm(graphon.size,0,1)
+    y_response<-beta0+beta1*f_xi_ts+X_vec%*%beta_vec+error
+    
+    # 4. pair network dataset.
+    original_data<-as.data.frame(cbind(y_response,rooted_ts.density,X_vec))
+    colnames(original_data)<-c('y_response','rooted_ts_density','x1','x2')
+    
+    ####################
+    # pre-computations. #
+    ####################
+    
+    A1=Matrix(A_mat,sparse=T)
+    # A2 gives the pair-wise length-2 walk count.
+    A2= A1 %*% A1
+    diag(A2)=0
+    
+    
+    # 1. calculate \hat_{g(i)} for all linear network statistics.
+    
+    # Note: in all pre-computations, estimated rho will be used be adjusted by the bootstrapped one later.
+    yz_mean <- mean((original_data$y_response)*(original_data$rooted_ts_density))
+    x1z_mean <- mean((original_data$rooted_ts_density)*(original_data[,3]))
+    x2z_mean <- mean((original_data$rooted_ts_density)*(original_data[,4]))
+    z_mean<-mean(original_data$rooted_ts_density)
+    
+    # pre-computation normalization factor.
+    factor1<-1/choose(graphon.size-1,r-1);
+    common_factor <- factor1 / nu_obv^2
+    #common_factor <- factor1 / nu^2
+    
+    # calculate the leading term of Hoeffding decomposition for i from 1 to n.
+    weighted_nonroot_count<-weighted_non_rooted_two_star_count(A_mat,original_data$y_response,
+                                                               original_data$x1,original_data$x2)
+    # Vectorized calculations for g1_hat_yz, g1_hat_x1z, g1_hat_x2z, g1_hat_z, g1_hat_nu.
+    local_center_contri_yz <- original_data[, 1] * rooted_ts
+    local_center_contri_x1z <- original_data[, 3] * rooted_ts
+    local_center_contri_x2z <- original_data[, 4] * rooted_ts
+    
+    other_node_contri_yz <- weighted_nonroot_count[['weighted_counts_yz']]
+    other_node_contri_x1z <- weighted_nonroot_count[['weighted_counts_x1z']]
+    other_node_contri_x2z <- weighted_nonroot_count[['weighted_counts_x2z']]
+    
+    # Calculate all g1_hat terms.
+    g1_hat_yz <- common_factor * (local_center_contri_yz + other_node_contri_yz) / 3 - yz_mean
+    g1_hat_x1z <- common_factor * (local_center_contri_x1z + other_node_contri_x1z) / 3 - x1z_mean
+    g1_hat_x2z <- common_factor * (local_center_contri_x2z + other_node_contri_x2z) / 3 - x2z_mean
+    g1_hat_z <- common_factor * (rooted_ts + rowSums(A2)) / 3 - z_mean # rowSums(A2): nodewise length-2 walks.
+    g1_hat_nu <- rowSums(A_mat) / (graphon.size - 1) - nu_obv 
+    
+    
+    # 2. Pre-computation of g1_hat for the second statistic.
+    
+    # Compute the peripheral counts using the vectorized function
+    peripheral_counts <- find_size_4_non_rooted_wheels_count_sparse(A_mat)
+    
+    # Calculate the rooted size-4 wheel counts for each node
+    rooted_wheel <- choose(di, 4)
+    
+    # we provide both the bias-corrected and non-corrected 
+    z2_mean <- sum(rooted_wheel) / (5 * nu_obv^4 * choose(graphon.size, 2 * r - 1))
+    z2_mean_non_corr <- mean(original_data$rooted_ts_density^2)
+    
+    # Pre-compute the normalization factor.
+    factor2 <- 1 / choose(graphon.size - 1, 2 * r - 1 - 1)
+    
+    # Compute g1_hat_z2 for all nodes in a vectorized manner.
+    # ATTENTION: g1_hat_z2 will be different for the corrected and non_corrected case
+    
+    g1_hat_z2 <- (factor2 / (5 * nu_obv^4)) * (rooted_wheel + peripheral_counts) - z2_mean
+    
+    # For the non-corrected version, has to use the least information about the structure, so we do not precompute here.
+    # g1_hat_z2_non_corr <- (factor2 / (5 * nu_obv^4)) * (rooted_wheel + peripheral_counts) - z2_mean_non_corr
+    # RMK: be careful about the constant factor/and also whether to include distinct count/isomorphic count.
+    
+    ###################################
+    # joint bootstrapping procedures. #
+    ###################################
+    
+    ## 1. Prepare observed data.
+    y_mean<-mean(original_data[,1])
+    x1_mean<-mean(original_data[,3])
+    x2_mean<-mean(original_data[,4])
+    
+    x1_2nd_mean<-mean(original_data[,3]*original_data[,3])
+    x2_2nd_mean<-mean(original_data[,4]*original_data[,4])
+    x1x2_mean<-mean(original_data[,3]*original_data[,4])
+    yx1_mean<-mean(original_data[,1]*original_data[,3])
+    yx2_mean<-mean(original_data[,1]*original_data[,4])
+    
+    observed_X_y<-matrix(c(y_mean,yz_mean,yx1_mean,yx2_mean),ncol = 1)
+    observed_X_XT<-matrix(c(1,z_mean,x1_mean,x2_mean,
+                            z_mean,z2_mean,x1z_mean,x2z_mean,
+                            x1_mean,x1z_mean,x1_2nd_mean,x1x2_mean,
+                            x2_mean,x2z_mean,x1x2_mean,x2_2nd_mean),
+                            nrow = 4,ncol = 4)
+    observed_X_XT_non_corr<-matrix(c(1,z_mean,x1_mean,x2_mean,
+                            z_mean,z2_mean_non_corr,x1z_mean,x2z_mean,
+                            x1_mean,x1z_mean,x1_2nd_mean,x1x2_mean,
+                            x2_mean,x2z_mean,x1x2_mean,x2_2nd_mean),
+                            nrow = 4,ncol = 4)
+    
+    ## 2. The bootstrap procedure starts.
+    for (ii in 1:bootstrap.size){
+      
+      cat("Starting bootstrap", ii, "of", bootstrap.size, "\n")
+      X1=rnorm(graphon.size,1,sqrt(1/2));X2=rnorm(graphon.size,1,sqrt(1/3));
+      W=X1*X2; # mean 1 var 1 of W; W=rnorm(graphon.size,0,1)
+      
+      ## A. bootstrap network statistics.
+      bootstraped_nu[ii]<-(nu_obv+(2/graphon.size)*sum((W-1)*g1_hat_nu))
+      
+      # ATTENTION: rooted two star is under investigation, normalize sparsity level with appropriate order!
+      # A.1 linear case, order-3 U statistics.
+      # (nu_obv/bootstraped_nu[ii])^3 adjusted.
+      bootstraped_yz[ii]<-(yz_mean+(r/graphon.size)*sum((W-1)*g1_hat_yz))*(nu_obv/bootstraped_nu[ii])^2
+      bootstraped_x1z[ii]<-(x1z_mean+(r/graphon.size)*sum((W-1)*g1_hat_x1z))*(nu_obv/bootstraped_nu[ii])^2
+      bootstraped_x2z[ii]<-(x2z_mean+(r/graphon.size)*sum((W-1)*g1_hat_x2z))*(nu_obv/bootstraped_nu[ii])^2
+      bootstraped_z[ii]<-(z_mean+(r/graphon.size)*sum((W-1)*g1_hat_z))*(nu_obv/bootstraped_nu[ii])^2
+      
+      # A.2 squared case, order 5 U-statistics.
+      # (nu_obv/bootstraped_nu[ii])^6 adjusted.
+      bootstraped_z2[ii]<-(z2_mean+((2*r-1)/graphon.size)*sum((W-1)*g1_hat_z2))*(nu_obv/bootstraped_nu[ii])^4
+      # bootstraped_z2_non_corr[ii]<-(z2_mean_non_corr+((2*r-1)/graphon.size)*sum((W-1)*g1_hat_z2_non_corr))*(nu_obv/bootstraped_nu[ii])^4
+
+      ## B. bootstrap other statistics.
+      # B.1 first order mean statistics.
+      bootstraped_y[ii]<-y_mean+mean((W-1)*(original_data[,1]-y_mean))
+      bootstraped_x1[ii]<-x1_mean+mean((W-1)*(original_data[,3]-x1_mean))
+      bootstraped_x2[ii]<-x2_mean+mean((W-1)*(original_data[,4]-x2_mean))
+      # B.2 second order mean statistics.
+      bootstraped_x1_2nd[ii]<-x1_2nd_mean+mean((W-1)*(original_data[,3]*original_data[,3]-x1_2nd_mean))
+      bootstraped_x2_2nd[ii]<-x2_2nd_mean+mean((W-1)*(original_data[,4]*original_data[,4]-x2_2nd_mean))
+      bootstraped_x1x2[ii]<-x1x2_mean+mean((W-1)*(original_data[,3]*original_data[,4]-x1x2_mean))
+      bootstraped_yx1[ii]<-yx1_mean+mean((W-1)*(original_data[,1]*original_data[,3]-yx1_mean))
+      bootstraped_yx2[ii]<-yx2_mean+mean((W-1)*(original_data[,1]*original_data[,4]-yx2_mean))
+      # for the non-corrected squared term.
+      bootstraped_z2_non_corr[ii]<-(z2_mean_non_corr+(2*r-1)*mean((W-1)*(original_data[,2]^2-z2_mean_non_corr)))*(nu_obv/bootstraped_nu[ii])^4
+      
+      
+      ## C. align all the bootstrapped mean statistics for bias-corrected estimator.
+      # squared matrix 4*4
+      bootstrap_X_XT<-matrix(c(1,bootstraped_z[ii],bootstraped_x1[ii],bootstraped_x2[ii],
+                               bootstraped_z[ii],bootstraped_z2[ii],bootstraped_x1z[ii],bootstraped_x2z[ii],
+                               bootstraped_x1[ii],bootstraped_x1z[ii],bootstraped_x1_2nd[ii],bootstraped_x1x2[ii],
+                               bootstraped_x2[ii],bootstraped_x2z[ii],bootstraped_x1x2[ii],bootstraped_x2_2nd[ii]),
+                             nrow = 4,ncol = 4)
+      # column vector 4*1
+      bootstrap_X_y<-matrix(c(bootstraped_y[ii],bootstraped_yz[ii],
+                              bootstraped_yx1[ii],bootstraped_yx2[ii]),
+                            ncol = 1)
+      
+      # obtain bootstrapped beta vector.
+      bootstraped_beta_linear_multiplier[ii,]<-solve(bootstrap_X_XT)%*%bootstrap_X_y
+      
+      ## D. align all the bootstrapped mean statistics for non-corrected estimator.
+      # squared matrix 4*4
+      bootstrap_X_XT_non_corr<-matrix(c(1,bootstraped_z[ii],bootstraped_x1[ii],bootstraped_x2[ii],
+                               bootstraped_z[ii],bootstraped_z2_non_corr[ii],bootstraped_x1z[ii],bootstraped_x2z[ii],
+                               bootstraped_x1[ii],bootstraped_x1z[ii],bootstraped_x1_2nd[ii],bootstraped_x1x2[ii],
+                               bootstraped_x2[ii],bootstraped_x2z[ii],bootstraped_x1x2[ii],bootstraped_x2_2nd[ii]),
+                             nrow = 4,ncol = 4)
+      
+      # obtain bootstrapped beta vector.
+      bootstraped_beta_linear_multiplier_non_corr[ii,]<-solve(bootstrap_X_XT_non_corr)%*%bootstrap_X_y
+      
+    }
+    
+    # store the bootstrap samples for this repetition
+    # Note: all_bootstrap_samples is targeting the first target and 
+    # all_bootstrap_samples_non_corr will target the noisy one.
+    all_bootstrap_samples[[outer]] <- bootstraped_beta_linear_multiplier
+    all_bootstrap_samples_non_corr[[outer]] <-bootstraped_beta_linear_multiplier_non_corr
+    
+    all_beta_estimates_corr [[outer]] <- solve(observed_X_XT)%*%observed_X_y
+    all_beta_estimates_non_corr [[outer]] <- solve(observed_X_XT_non_corr)%*%observed_X_y
+    
+    # intermediate results for investigation purpose.
+    all_bootstrap_rho [[outer]] <-bootstraped_nu
+    all_estimated_rho [[outer]] <-nu_obv
+    
+    all_bootstrap_z2_corr [[outer]] <-bootstraped_z2
+    all_estimated_z2_corr [[outer]] <-z2_mean
+    
+    all_bootstrap_z2_non_corr [[outer]] <-bootstraped_z2_non_corr
+    all_estimated_z2_non_corr [[outer]] <-z2_mean_non_corr
+    
+    # Save the updated results after current repetition
+    saveRDS(all_bootstrap_samples, file = paste0("0420_LS_Corrected_bootstrap_samples_sparsity_", k, ".rds"))
+    saveRDS(all_bootstrap_samples_non_corr, file = paste0("0420_LS_nonCorrected_bootstrap_samples_sparsity_", k, ".rds"))
+    saveRDS(all_beta_estimates_corr, file = paste0("0420_LS_Corrected_beta_hat_sparsity_", k, ".rds"))
+    saveRDS(all_beta_estimates_non_corr, file = paste0("0420_LS_nonCorrected_beta_hat_sparsity_", k, ".rds"))
+    
+    # For investigation purpose
+    saveRDS(all_bootstrap_rho, file = paste0("0420_LS_bootstrap_rho_sparsity_", k, ".rds"))
+    saveRDS(all_estimated_rho, file = paste0("0420_LS_rho_hat_sparsity_", k, ".rds"))
+    
+    saveRDS(all_bootstrap_z2_corr, file = paste0("0420_LS_bootstrap_z2_corr_sparsity_", k, ".rds"))
+    saveRDS(all_estimated_z2_corr, file = paste0("0420_LS_z2_hat_corr_sparsity_", k, ".rds"))
+    
+    saveRDS(all_bootstrap_z2_non_corr, file = paste0("0420_LS_bootstrap_z2_noncorr_sparsity_", k, ".rds"))
+    saveRDS(all_estimated_z2_non_corr, file = paste0("0420_LS_z2_hat_noncorr_sparsity_", k, ".rds"))
+  }
+}  

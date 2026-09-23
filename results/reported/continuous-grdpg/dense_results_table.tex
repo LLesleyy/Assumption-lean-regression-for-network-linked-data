@@ -1,0 +1,21 @@
+% Requires \usepackage{booktabs}. Table only; suitable for \input{}.
+\begin{table}[htbp]
+\centering
+\small
+\caption{\textit{Bootstrap coverage and power under different network signal settings in a continuous GRDPG}}
+\label{tab:strict-grdpg-dense}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lccc}
+\toprule
+Setting & Coverage ($\beta_1$) & Coverage ($\beta_2$) & Power (network effect) \\
+\midrule
+Strong network effect & 0.9725 & 0.9675 & 1.0000 \\
+Weak network effect & 0.9500 & 0.9575 & 0.0425 \\
+No network effect & 0.9450 & 0.9425 & 0.0375 \\
+\bottomrule
+\end{tabular}
+\par\smallskip
+\begin{minipage}{0.98\linewidth}\footnotesize
+Entries are empirical coverage probabilities of 95\% bootstrap confidence intervals for the conventional covariate coefficients $(\beta_1,\beta_2)=(1,2)$ and rejection frequencies of the level-$0.05$ test for an overall network effect. Each setting uses 400 independent repetitions with $n=3000$, $\rho_n=n^{-0.3}$, and 2000 multiplier bootstrap draws per repetition. The last column reports power under the alternatives and type-I error in the no-network-effect setting. The adjacency spectral embedding is normalized using known $\rho_n$.
+\end{minipage}
+\end{table}
